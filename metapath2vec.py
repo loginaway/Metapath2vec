@@ -183,14 +183,12 @@ class metapath2vec():
 
         return train_op
     
-    def run_epoch(self, sess, batch, epoch_number):
+    def run_epoch(self, sess, epoch_number):
         '''
         Runs an epoch of training.
 
         Args:
             sess: tf.Session() object.
-            batch: batch generated from next(batch_generator), where batch_generator is 
-                the return of get_batch().
         Returns:
             average_loss: Average mini-batch loss on this epoch.
         '''
@@ -212,17 +210,37 @@ class metapath2vec():
                 
                 now = time()
                 if now - st > 1800:
-                    pass
+                    self.check_point(np.mean(loss_list), epoch_number, sess)
+                    st = time()
 
-    def check_point(self):
+    def check_point(self, loss, epoch, sess):
         '''
         Check the current score and dump the output that has the best performance.
+
+        Args:
+            loss: Mean loss of the current epoch.
+            epoch: Epoch number.
+            sess: tf.Session() object.
         '''
-        pass
+        print('Checkpoint at Epoch {}, Current loss: {}\t|\tHistory best: {}'.format(epoch, loss, self.best_loss))
+        if loss < self.best_loss:
+            self.best_loss = loss
 
+            savedir ='./output/'
 
+            embeddings = sess.run(self.embed_matrix)
+            writeData(savedir + self.args.outname, embeddings, self.node2id)
+            print('Embeddings are successfully output to file.')
 
-            
+    def fit(self, sess):
+        '''
+        Start estimating Metapath2vec model.
+
+        Args:
+            sess: tf.Session() object.
+        '''
+        for epoch in range(self.args.epoch):
+            self.run_epoch(sess, epoch)
 
 
     def __init__(self, args):
@@ -243,6 +261,8 @@ class metapath2vec():
         self.add_embedding()
         self.loss = self.add_model()
         self.train_op = self.add_optimizer(self.loss)
+
+        self.best_loss = 1e10
 
 
 
@@ -267,11 +287,15 @@ if __name__=='__main__':
     parser.add_argument('-gpu',         dest='gpu',         default='0',            help='Run the model on gpu')
     parser.add_argument('-l2',          dest='l2',        default=0.001,  type=float,help='L2 regularization scale (default 0.001)')
     parser.add_argument('-logdir',      dest='logdir',      default='./log/',       help='The directory used to store log files')
+    parser.add_argument('-lr',          dest='learning_rate',default=1e-4, type=float, help='Learning rate.')
+    parser.add_argument('-outname',      dest='outname',    default='meta_embeddings.txt', help='Name of the output file.')
 
 
     args = parser.parse_args()
     set_gpu(args.gpu)
 
+
+    tf.reset_default_graph()
     model = metapath2vec(args)
 
     config = tf.ConfigProto()
@@ -281,11 +305,15 @@ if __name__=='__main__':
     # with tf.Session(config=config) as sess:
     #     sess.run(tf.global_variables_initializer())
     #     model.fit()
-    batch = model.get_batch()
+    # batch = model.get_batch()
     # get = next(batch)
     # print(get, [i.shape for i in get.values()])
-    model.add_embedding()
-    model.add_placeholders()
-    print(model.embed_matrix)
-    model.add_model()
+    # model.add_embedding()
+    # model.add_placeholders()
+    # # print(model.embed_matrix)
+    # model.add_model()
+    
+    with tf.Session(config=config) as sess:
+        sess.run(tf.global_variables_initializer())
+        model.fit(sess)
     

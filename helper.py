@@ -35,6 +35,19 @@ def getData(filename, typestr):
     
     return node2id, type2set, maxsentlen, len(sent_list)
 
+def writeData(filename, embeddings, node2id):
+    '''
+    Write data to filename.
+
+    Args:
+        filename: The output file name.
+        embeddings: The embedding matrix.
+        node2id: Same definition as in getData().
+    '''
+    with open(filename, 'w') as f:
+        for key, id_ in node2id.items():
+            f.write(key + ' ' + ' '.join(embeddings[id_].astype(str)) + '\n')
+
 def set_gpu(gpus):
 	"""
 	Sets the GPU to be used for the run
