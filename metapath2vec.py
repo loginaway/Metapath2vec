@@ -39,7 +39,6 @@ class metapath2vec():
             neg_list.append(line)
         return neg_list
 
-
     def get_batch(self):
         '''
         Generate a batch of size self.args.batch_size.
@@ -96,13 +95,6 @@ class metapath2vec():
         batch = {key: batch[key][: sent_count] for key in batch}
         yield batch
 
-
-
-
-
-            
-
-
     def add_placeholders(self):
         '''
         Add placeholders for metapath2vec.
@@ -114,13 +106,49 @@ class metapath2vec():
         self.context_ind = tf.placeholder(tf.int32, \
             (self.args.batch_size, self.num_windows, 2 * self.args.neighbour_size))
 
+    def create_feed_dict(self, batch):
+        '''
+        Create feed dict for training.
+
+        Args:
+            batch <dict>: Batch generated from next(batch_generator), where batch_generator is 
+                the return of self.get_batch().
+        
+        Returns:
+            feed_dict <dict>: the feed dictionary mapping from placeholders to values.
+        '''
+        feed_dict = {}
+        feed_dict[self.negative_ind] = batch['neg_ind']
+        feed_dict[self.core_ind] = batch['cor_ind']
+        feed_dict[self.context_ind] = batch['cont_ind']
+        return feed_dict
+    
+    def add_embedding(self):
+        '''
+        Add embedding parameters in the computing.
+        '''
+        with tf.variable_scope('Embeddings'):
+            embed_matrix = tf.get_variable('embed_matrix', 
+                [len(self.node2id), self.args.embed_dim], tf.float32, 
+                initializer=tf.random_normal_initializer()
+                )
+            padding = tf.get_variable('padding', 
+                [1, self.args.embed_dim], tf.float32, 
+                initializer=tf.zeros_initializer(), 
+                trainable=False
+            )
+            self.embed_matrix = tf.concat([embed_matrix, padding], axis=0)
+    
+    def 
+
+
 
     def __init__(self, args):
         '''
         Initialize metapath2vec model with args.
         
         Args:
-            args: An instance of class argparse.
+            args: An instance of class argparse. Details are in if __name__ == '__main__' clause.
         '''
         self.args = args
         self.load_data()
@@ -159,6 +187,8 @@ if __name__=='__main__':
     #     sess.run(tf.global_variables_initializer())
     #     model.fit()
     batch = model.get_batch()
-    get = next(batch)
-    print(get, [i.shape for i in get.values()])
+    # get = next(batch)
+    # print(get, [i.shape for i in get.values()])
+    model.add_embedding()
+    print(model.embed_matrix)
     
