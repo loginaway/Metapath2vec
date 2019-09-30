@@ -10,7 +10,7 @@ class metapath2vec():
         '''
         Load data from files.
         '''
-        self.node2id, self.type2set, self.maxsentlen = getData(self.args.filename, self.args.typestr)
+        self.node2id, self.type2set, self.maxsentlen, self.sent_num= getData(self.args.filename, self.args.typestr)
         # Compute max number of windows in a sentence
         self.num_windows = self.maxsentlen
         self.id2node = {self.node2id[key]: key for key in self.node2id}
@@ -100,11 +100,11 @@ class metapath2vec():
         Add placeholders for metapath2vec.
         '''
         self.negative_ind = tf.placeholder(tf.int32, \
-            (self.args.batch_size, self.num_windows, self.args.neg_size * 2 * self.args.neighbour_size))
+            (None, self.num_windows, self.args.neg_size * 2 * self.args.neighbour_size))
         self.core_ind = tf.placeholder(tf.int32, \
-            (self.args.batch_size, self.num_windows, 1))
+            (None, self.num_windows, 1))
         self.context_ind = tf.placeholder(tf.int32, \
-            (self.args.batch_size, self.num_windows, 2 * self.args.neighbour_size))
+            (None, self.num_windows, 2 * self.args.neighbour_size))
 
     def create_feed_dict(self, batch):
         '''
@@ -130,7 +130,8 @@ class metapath2vec():
         with tf.variable_scope('Embeddings'):
             embed_matrix = tf.get_variable('embed_matrix', 
                 [len(self.node2id), self.args.embed_dim], tf.float32, 
-                initializer=tf.random_normal_initializer()
+                initializer=tf.random_normal_initializer(),
+                regularizer=self.regularizer
                 )
             padding = tf.get_variable('padding', 
                 [1, self.args.embed_dim], tf.float32, 
@@ -139,8 +140,66 @@ class metapath2vec():
             )
             self.embed_matrix = tf.concat([embed_matrix, padding], axis=0)
     
-    def 
+    def add_model(self):
+        '''
+        Build metapath2vec structure.
+        
+        Returns:
+            loss: loss of the estimation of the model.
+        '''
+        with tf.name_scope('Main_Model'):
+            neg_embed = tf.nn.embedding_lookup(self.embed_matrix, self.negative_ind)
+            core_embed = tf.nn.embedding_lookup(self.embed_matrix, self.core_ind)
+            cont_embed = tf.nn.embedding_lookup(self.embed_matrix, self.context_ind)
+            
+            neg_core = tf.matmul(core_embed, tf.transpose(neg_embed, [0, 1, 3, 2]))
+            cont_core = tf.matmul(core_embed, tf.transpose(cont_embed, [0, 1, 3, 2]))
 
+            sec_neg = tf.log(tf.sigmoid(tf.negative(neg_core)))
+            sec_cont = tf.log(tf.sigmoid(cont_core))
+
+            objective = tf.reduce_sum(sec_neg) + tf.reduce_sum(sec_cont)
+            loss = tf.negative(objective)
+
+            if self.regularizer != None:
+                loss += tf.contrib.layers.apply_regularization(self.regularizer, 
+                    tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES))
+        
+        return loss
+
+    def add_optimizer(self, loss):
+        '''
+        Add optimizer for estimating the parameters.
+
+        Args:
+            loss: Model loss from add_model().
+        Returns:
+            train_op: 
+        '''
+        with tf.name_scope('Optimizer'):
+            optimizer = tf.train.AdamOptimizer(self.args.learning_rate)
+            train_op = optimizer.minimize(loss)
+
+        return train_op
+    
+    def run_epoch(self, sess, batch):
+        '''
+        Runs an epoch of training.
+
+        Args:
+            sess: tf.Session() object.
+            batch: batch generated from next(batch_generator), where batch_generator is 
+                the return of get_batch().
+        Returns:
+            average_loss: Average mini-batch loss on this epoch.
+        '''
+        loss_list = []
+        current_sent_num = 0
+
+        for batch_size in 
+
+
+            
 
 
     def __init__(self, args):
@@ -152,6 +211,10 @@ class metapath2vec():
         '''
         self.args = args
         self.load_data()
+        if self.args.l2 != 0: 
+            self.regularizer = tf.contrib.layers.l2_regularizer(scale=self.args.l2)
+        else: 
+            self.regularizer = None
 
 
 
@@ -173,6 +236,7 @@ if __name__=='__main__':
     parser.add_argument('-batch',       dest='batch_size',  default=4,   type=int, help='The number of the data used in each iter')
     parser.add_argument('-neg',         dest='neg_size',    default=5,    type=int, help='The size of negative samples')
     parser.add_argument('-gpu',         dest='gpu',         default='0',            help='Run the model on gpu')
+    parser.add_argument('-l2',          dest='l2',        default=0.001,  type=float,help='L2 regularization scale (default 0.001)')
 
     args = parser.parse_args()
     set_gpu(args.gpu)
@@ -190,5 +254,7 @@ if __name__=='__main__':
     # get = next(batch)
     # print(get, [i.shape for i in get.values()])
     model.add_embedding()
+    model.add_placeholders()
     print(model.embed_matrix)
+    model.add_model()
     

@@ -33,7 +33,7 @@ def getData(filename, typestr):
             node2id[node] = nid
             nid += 1
     
-    return node2id, type2set, maxsentlen
+    return node2id, type2set, maxsentlen, len(sent_list)
 
 def set_gpu(gpus):
 	"""
