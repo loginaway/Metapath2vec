@@ -73,23 +73,12 @@ class metapath2vec():
             cont_list = [wrd_list[cor_ind - self.args.neighbour_size: cor_ind] + \
                         wrd_list[cor_ind + 1: cor_ind + self.args.neighbour_size + 1] \
                         for cor_ind in range(self.args.neighbour_size, len(wrd_list) - self.args.neighbour_size)]
-            
-            
-            # # test
-            # print(cont_list)
-            # print(wrd_list)
-            # print('len_wrd_list', len(wrd_list))
-            # print('contsize', len(cont_list), [len(i) for i in cont_list])
-            # print('num_windows', self.num_windows)
-            # print(len(self.node2id), max(self.node2id.values()), min(self.node2id.values()))
 
             # generate negative samples
-            neg_list = self.neg_sample(cont_list)   
-
+            neg_list = self.neg_sample(cont_list)  
 
             batch['cor_ind'][sent_count] = np.reshape(core_list, (len(core_list), 1))
             batch['cont_ind'][sent_count] = cont_list
-            # negative sampling : todo
             batch['neg_ind'][sent_count] = neg_list
 
             sent_count += 1
@@ -170,5 +159,6 @@ if __name__=='__main__':
     #     sess.run(tf.global_variables_initializer())
     #     model.fit()
     batch = model.get_batch()
-    print(next(batch))
+    get = next(batch)
+    print(get, [i.shape for i in get.values()])
     
