@@ -3,6 +3,7 @@
 import tensorflow as tf
 from helper import *
 from random import choices
+from time import time
 
 class metapath2vec():
     
@@ -182,7 +183,7 @@ class metapath2vec():
 
         return train_op
     
-    def run_epoch(self, sess, batch):
+    def run_epoch(self, sess, batch, epoch_number):
         '''
         Runs an epoch of training.
 
@@ -195,8 +196,30 @@ class metapath2vec():
         '''
         loss_list = []
         current_sent_num = 0
+        st = time()
 
-        for batch_size in 
+        for step, batch in enumerate(self.get_batch()):
+            feed_dict = self.create_feed_dict(batch)
+            batch_loss, _ = sess.run([self.loss, self.train_op], feed_dict=feed_dict)
+            loss_list.append(batch_loss)
+
+            current_sent_num += self.args.batch_size
+
+            if step % 10 == 0:
+                print('[Epoch {} -- {}/{} ({})]: Train Loss:\t {}'.format\
+                    (epoch_number, current_sent_num, self.sent_num, current_sent_num/self.sent_num,
+                    np.mean(loss_list)))
+                
+                now = time()
+                if now - st > 1800:
+                    pass
+
+    def check_point(self):
+        '''
+        Check the current score and dump the output that has the best performance.
+        '''
+        pass
+
 
 
             
@@ -215,6 +238,12 @@ class metapath2vec():
             self.regularizer = tf.contrib.layers.l2_regularizer(scale=self.args.l2)
         else: 
             self.regularizer = None
+        
+        self.add_placeholders()
+        self.add_embedding()
+        self.loss = self.add_model()
+        self.train_op = self.add_optimizer(self.loss)
+
 
 
 
@@ -237,6 +266,8 @@ if __name__=='__main__':
     parser.add_argument('-neg',         dest='neg_size',    default=5,    type=int, help='The size of negative samples')
     parser.add_argument('-gpu',         dest='gpu',         default='0',            help='Run the model on gpu')
     parser.add_argument('-l2',          dest='l2',        default=0.001,  type=float,help='L2 regularization scale (default 0.001)')
+    parser.add_argument('-logdir',      dest='logdir',      default='./log/',       help='The directory used to store log files')
+
 
     args = parser.parse_args()
     set_gpu(args.gpu)
