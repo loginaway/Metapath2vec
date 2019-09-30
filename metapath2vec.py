@@ -15,6 +15,8 @@ class metapath2vec():
         # Compute max number of windows in a sentence
         self.num_windows = self.maxsentlen
         self.id2node = {self.node2id[key]: key for key in self.node2id}
+        # Specify default index, used for not-existing words, corresponding to the last line of embed_matrix.
+        self.default_ind = len(self.node2id)
 
     def neg_sample(self, cont_list):
         '''
@@ -30,13 +32,13 @@ class metapath2vec():
         for context in cont_list:
             line = []
             for id_ in context:
-                if id_ == -1: 
+                if id_ == self.default_ind: 
                     id_set = tuple()
                     avlbl_size = 0
                 else:
                     id_set = self.type2set[self.id2node[id_][0]].difference((id_,))
                     avlbl_size = min(len(id_set), self.args.neg_size) 
-                line.extend(choices(tuple(id_set), k=avlbl_size)+[-1 for _ in range(self.args.neg_size - avlbl_size)])
+                line.extend(choices(tuple(id_set), k=avlbl_size)+[self.default_ind for _ in range(self.args.neg_size - avlbl_size)])
             neg_list.append(line)
         return neg_list
 
@@ -61,7 +63,7 @@ class metapath2vec():
         batch['cont_ind'] = np.empty(\
             (self.args.batch_size, self.num_windows, 2 * self.args.neighbour_size),                      dtype=np.int32)
 
-        patch_list = [-1 for _ in range(self.args.neighbour_size)]
+        patch_list = [self.default_ind for _ in range(self.args.neighbour_size)]
         for line in open(self.args.filename, 'r'):
             if len(line) < 2: continue
             # generate word id list (from a sentence)
@@ -156,8 +158,8 @@ class metapath2vec():
             neg_core = tf.matmul(core_embed, tf.transpose(neg_embed, [0, 1, 3, 2]))
             cont_core = tf.matmul(core_embed, tf.transpose(cont_embed, [0, 1, 3, 2]))
 
-            sec_neg = tf.log(tf.sigmoid(tf.negative(neg_core)))
-            sec_cont = tf.log(tf.sigmoid(cont_core))
+            sec_neg = tf.log(tf.clip_by_value(tf.sigmoid(tf.negative(neg_core)), 1e-6, 1.0))
+            sec_cont = tf.log(tf.clip_by_value(tf.sigmoid(cont_core), 1e-6, 1.0))
 
             objective = tf.reduce_sum(sec_neg) + tf.reduce_sum(sec_cont)
             loss = tf.negative(objective)
@@ -212,6 +214,8 @@ class metapath2vec():
                 if now - st > 1800:
                     self.check_point(np.mean(loss_list), epoch_number, sess)
                     st = time()
+        
+        return np.mean(loss_list)
 
     def check_point(self, loss, epoch, sess):
         '''
@@ -222,7 +226,7 @@ class metapath2vec():
             epoch: Epoch number.
             sess: tf.Session() object.
         '''
-        print('Checkpoint at Epoch {}, Current loss: {}\t|\tHistory best: {}'.format(epoch, loss, self.best_loss))
+        print('Checkpoint at Epoch {}, Current loss: {}\t| History best: {}'.format(epoch, loss, self.best_loss))
         if loss < self.best_loss:
             self.best_loss = loss
 
@@ -240,7 +244,8 @@ class metapath2vec():
             sess: tf.Session() object.
         '''
         for epoch in range(self.args.epoch):
-            self.run_epoch(sess, epoch)
+            loss = self.run_epoch(sess, epoch)
+        self.check_point(loss, epoch, sess)
 
 
     def __init__(self, args):
@@ -261,15 +266,8 @@ class metapath2vec():
         self.add_embedding()
         self.loss = self.add_model()
         self.train_op = self.add_optimizer(self.loss)
-
+        
         self.best_loss = 1e10
-
-
-
-
-
-
-
 
 
 
@@ -286,8 +284,7 @@ if __name__=='__main__':
     parser.add_argument('-neg',         dest='neg_size',    default=5,    type=int, help='The size of negative samples')
     parser.add_argument('-gpu',         dest='gpu',         default='0',            help='Run the model on gpu')
     parser.add_argument('-l2',          dest='l2',        default=0.001,  type=float,help='L2 regularization scale (default 0.001)')
-    parser.add_argument('-logdir',      dest='logdir',      default='./log/',       help='The directory used to store log files')
-    parser.add_argument('-lr',          dest='learning_rate',default=1e-4, type=float, help='Learning rate.')
+    parser.add_argument('-lr',          dest='learning_rate',default=1e-2, type=float, help='Learning rate.')
     parser.add_argument('-outname',      dest='outname',    default='meta_embeddings.txt', help='Name of the output file.')
 
 
@@ -301,17 +298,6 @@ if __name__=='__main__':
     config = tf.ConfigProto()
     config.gpu_options.allow_growth=True
     config.gpu_options.per_process_gpu_memory_fraction = 0.75
-
-    # with tf.Session(config=config) as sess:
-    #     sess.run(tf.global_variables_initializer())
-    #     model.fit()
-    # batch = model.get_batch()
-    # get = next(batch)
-    # print(get, [i.shape for i in get.values()])
-    # model.add_embedding()
-    # model.add_placeholders()
-    # # print(model.embed_matrix)
-    # model.add_model()
     
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
