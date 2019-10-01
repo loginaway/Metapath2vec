@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import numpy as np, argparse, os
+import numpy as np, os
 
 def getData(filename, typestr):
     '''
@@ -9,7 +9,6 @@ def getData(filename, typestr):
     Args:
         filename:   The name of the target random walks text file.
         typestr:    A string with each character representing one type of node.
-
     Returns:
         node2id:    A dict mapping node to its id in embeddings.
         type2set:   A dict classifying all node ids into groups by their types.
@@ -50,10 +49,10 @@ def writeData(filename, embeddings, node2id):
 
 def set_gpu(gpus):
 	"""
-	Sets the GPU to be used for the run
+	Sets the GPU to be used for the run.
 
 	Args:
-	    gpus:           List of GPUs to be used for the run  
+	    gpus:      List of GPUs to be used for the run.
 	"""
 	os.environ["CUDA_DEVICE_ORDER"]    = "PCI_BUS_ID"
 	os.environ["CUDA_VISIBLE_DEVICES"] = gpus

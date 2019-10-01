@@ -1,7 +1,9 @@
 # coding: utf-8
 
 import tensorflow as tf
-from helper import *
+import numpy as np
+import argparse
+from helper import getData, writeData, set_gpu
 from random import choices
 from time import time
 
@@ -24,9 +26,9 @@ class metapath2vec():
 
         Args;
             cont_list: A 2 dimensional context node id list.
-        
         Returns:
-
+            neg_list:  A 3 dimensional tensor (python list) of form
+                [batch, windows_size, neg_samples].
         '''
         neg_list = []
         for context in cont_list:
@@ -116,7 +118,6 @@ class metapath2vec():
         Args:
             batch <dict>: Batch generated from next(batch_generator), where batch_generator is 
                 the return of self.get_batch().
-        
         Returns:
             feed_dict <dict>: the feed dictionary mapping from placeholders to values.
         '''
@@ -148,7 +149,7 @@ class metapath2vec():
         Build metapath2vec structure.
         
         Returns:
-            loss: loss of the estimation of the model.
+            loss: Loss of the estimation of the model.
         '''
         with tf.name_scope('Main_Model'):
             neg_embed = tf.nn.embedding_lookup(self.embed_matrix, self.negative_ind)
@@ -177,7 +178,7 @@ class metapath2vec():
         Args:
             loss: Model loss from add_model().
         Returns:
-            train_op: 
+            train_op: The train operation. Run sess.run(train_op) to estimate the model.
         '''
         with tf.name_scope('Optimizer'):
             optimizer = tf.train.AdamOptimizer(self.args.learning_rate)
@@ -247,7 +248,6 @@ class metapath2vec():
             loss = self.run_epoch(sess, epoch)
         self.check_point(loss, epoch, sess)
 
-
     def __init__(self, args):
         '''
         Initialize metapath2vec model with args.
@@ -272,7 +272,6 @@ class metapath2vec():
 
 
 if __name__=='__main__':
-    
     parser = argparse.ArgumentParser(description='Metapath2Vec')
 
     parser.add_argument('-file',        dest='filename',    default='walks.txt',    help='The random walks filename')
@@ -283,14 +282,12 @@ if __name__=='__main__':
     parser.add_argument('-batch',       dest='batch_size',  default=4,   type=int, help='The number of the data used in each iter')
     parser.add_argument('-neg',         dest='neg_size',    default=5,    type=int, help='The size of negative samples')
     parser.add_argument('-gpu',         dest='gpu',         default='0',            help='Run the model on gpu')
-    parser.add_argument('-l2',          dest='l2',        default=0.001,  type=float,help='L2 regularization scale (default 0.001)')
+    parser.add_argument('-l2',          dest='l2',        default=1e-3,  type=float,help='L2 regularization scale (default 0.001)')
     parser.add_argument('-lr',          dest='learning_rate',default=1e-2, type=float, help='Learning rate.')
     parser.add_argument('-outname',      dest='outname',    default='meta_embeddings.txt', help='Name of the output file.')
 
-
     args = parser.parse_args()
     set_gpu(args.gpu)
-
 
     tf.reset_default_graph()
     model = metapath2vec(args)
@@ -302,4 +299,3 @@ if __name__=='__main__':
     with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         model.fit(sess)
-    
