@@ -207,15 +207,16 @@ class metapath2vec():
             current_sent_num += self.args.batch_size
 
             if step % 10 == 0:
-                print('[Epoch {} -- {}/{} ({})]: Train Loss:\t {}'.format\
+                print('[Epoch {} -- {}/{} ({})]: Train Loss:\t {}\r'.format\
                     (epoch_number, current_sent_num, self.sent_num, current_sent_num/self.sent_num,
-                    np.mean(loss_list)))
-                
+                    np.mean(loss_list)), end='')
+
                 now = time()
                 if now - st > 1800:
+                    print()
                     self.check_point(np.mean(loss_list), epoch_number, sess)
                     st = time()
-        
+        print()
         return np.mean(loss_list)
 
     def check_point(self, loss, epoch, sess):
