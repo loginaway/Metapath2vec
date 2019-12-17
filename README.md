@@ -33,7 +33,8 @@ The author of the paper also released [the source code and dataset](https://eric
 
 ​	`python metapath2vec.py -file walks.txt -embed_dim 64 -epoch 10 -types ac -outname embeddings`
 
-​	where `-file` specifies the dataset, `-types ac` gives a description of all the types appearing in the dataset (i.e. nodes start with 'a' or 'c'). **Please note that here walks.txt is only an example showing the format of the training file. If you want to train other files (or replicate the author's result), please generate your own meta-randomwalk sequences in the same form.**
+​	where `-file` specifies the dataset, `-types ac` gives a description of all the types appearing in the dataset (i.e. nodes start with 'a' or 'c'). 
+**Please note that** here walks.txt is only an example showing the format of the training file. If you want to train other files (or replicate the author's result), please generate your own meta-randomwalk sequences in the same form.
 
 ​	-> Our code has many other options. Run `python metapath2vec.py -h` for more information.
 
